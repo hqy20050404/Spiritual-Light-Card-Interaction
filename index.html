@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>心灵之光 - 手势交互塔罗</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 引入站酷快乐体：充满稚拙治愈感的手写风格字体 */
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+
+        :root {
+            /* 暖调草绿治愈系色彩定义 - 更暖、更明亮 */
+            --bg-gradient-start: #f1fbe6; /* 极浅暖草绿 */
+            --bg-gradient-mid: #d8eecd;   /* 暖草绿 */
+            --bg-gradient-end: #b6dab2;   /* 偏深的暖草绿 */
+            --text-color-dark: #5e7054;   /* 治愈系抹茶深绿，呼应背景 */
+            --text-color-light: #8fa385;  /* 浅抹茶绿 */
+            /* 卡背颜色调整为更浅、更清透的暖粉色 */
+            --card-back: #ffe8ee;         
+            --card-front: #fffcf8;        /* 暖白 */
+            --card-border: #ff9eaa;       /* 樱花粉边框 */
+            --glow-color: rgba(255, 249, 196, 0.5); /* 低饱和嫩黄 */
+            --pencil-texture: 1px 1px 2px rgba(0,0,0,0.1); /* 铅笔笔触效果 */
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            /* 应用站酷快乐体 */
+            font-family: 'ZCOOL KuaiLe', cursive; 
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 50%, var(--bg-gradient-end) 100%);
+            touch-action: none;
+            color: var(--text-color-dark);
+        }
+
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 10;
+        }
+
+        #video-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 120px;
+            height: 90px;
+            z-index: 5;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            opacity: 0.5;
+            transform: scaleX(-1);
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 20;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .instruction {
+            position: absolute;
+            bottom: 5%;
+            font-size: 1.5rem;
+            color: var(--text-color-light);
+            background: rgba(255, 255, 255, 0.5);
+            padding: 15px 25px;
+            border-radius: 30px;
+            backdrop-filter: blur(3px);
+            text-align: center;
+            transition: opacity 0.5s;
+            text-shadow: var(--pencil-texture);
+        }
+
+        #text-content-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+        }
+
+        .card-short-desc {
+            font-size: 2.2rem;
+            color: var(--text-color-dark);
+            /* 增强一点质感阴影 */
+            text-shadow: 1px 1px 0 rgba(255,255,255,0.8), -1px -1px 0 rgba(0,0,0,0.05);
+            transform: translateY(220px);
+            transition: transform 0.8s ease-out, opacity 0.8s;
+            opacity: 0;
+            position: absolute;
+            top: 50%;
+            margin-top: 110px; /* 往上偏移，原为180px */
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card-full-desc {
+            font-size: 1.8rem;
+            color: var(--text-color-dark);
+            max-width: 80%;
+            line-height: 1.8;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 40px 50px;
+            border-radius: 20px;
+            /* 移除了虚线边框 */
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            opacity: 0;
+            transform: scale(0.95);
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* 增加落笔的质感，阴影颜色更新为抹茶绿系 */
+            text-shadow: 1px 1px 0px rgba(255,255,255,0.5), 0px 1px 2px rgba(94, 112, 84, 0.15); 
+            pointer-events: auto; /* 允许内部文本被选中或滑动 */
+        }
+
+        #loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-gradient-mid);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-color-dark);
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--text-color-light);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <!-- MediaPipe 库依赖 -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <div id="loading">
+        <div class="loader"></div>
+        <h2 class="text-3xl tracking-widest mb-4">唤醒心灵之光...</h2>
+        <p class="text-xl opacity-80 mb-2">正在请求摄像头以开启手势感应</p>
+        <p class="text-sm opacity-60">如无摄像头权限，系统将自动降级为鼠标点击体验模式</p>
+    </div>
+
+    <div id="video-container">
+        <video id="input-video" playsinline></video>
+    </div>
+
+    <canvas id="game-canvas"></canvas>
+
+    <div id="ui-layer">
+        <div id="instruction" class="instruction">
+            握拳：重置 | 张开手：洗牌 | 食指指引：抽牌<br>手势2(比V)：翻牌 | 张嘴：净化读取
+        </div>
+    </div>
+
+    <div id="text-content-layer">
+        <div id="short-desc" class="card-short-desc"></div>
+        <div id="full-desc" class="card-full-desc"></div>
+    </div>
+
+<script>
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const videoElement = document.getElementById('input-video');
+    const loadingScreen = document.getElementById('loading');
+    const instructionEl = document.getElementById('instruction');
+    const textLayer = document.getElementById('text-content-layer');
+    const shortDescEl = document.getElementById('short-desc');
+    const fullDescEl = document.getElementById('full-desc');
+
+    // === 全局状态与变量定义 ===
+    let cw, ch;
+    
+    const STATES = {
+        INIT: 'INIT',
+        SHUFFLING: 'SHUFFLING',
+        DRAWING: 'DRAWING',
+        FLIPPED: 'FLIPPED',
+        DISSOLVING: 'DISSOLVING',
+        READING: 'READING'
+    };
+    let currentState = STATES.INIT;
+    
+    let handPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    let targetHandPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    let currentGesture = 'NONE';
+    let mouthOpen = false;
+    let fistLockoutTime = 0; // 新增：握拳防误触时间锁
+
+    let useMouseFallback = false;
+    let fallbackGestureIndex = -1;
+    // 鼠标点击轮换的交互顺序
+    const fallbackGestures = ['OPEN', 'POINT', 'TWO_FINGERS', 'MOUTH_OPEN', 'FIST']; 
+
+    // 获取 CSS 变量颜色辅助函数
+    const computedStyle = getComputedStyle(document.documentElement);
+    const getCssVar = (name) => computedStyle.getPropertyValue(name).trim();
+    
+    const cardBackColor = getCssVar('--card-back');
+    const cardFrontColor = getCssVar('--card-front');
+    const cardBorderColor = getCssVar('--card-border');
+    const textColorDark = getCssVar('--text-color-dark');
+
+    // 监听窗口大小变化
+    function resizeCanvas() {
+        cw = window.innerWidth;
+        ch = window.innerHeight;
+        canvas.width = cw;
+        canvas.height = ch;
+        if (currentState === STATES.INIT) {
+            targetHandPos = { x: cw / 2, y: ch / 2 };
+            handPos = { x: cw / 2, y: ch / 2 };
+        }
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // === 图片预加载逻辑 ===
+    const cardImages = [];
+    let imagesLoaded = 0;
+    const TOTAL_CARDS = 20;
+
+    // 更新卡牌图片路径
+    const cardImageUrls = [
+        'https://github.com/user-attachments/assets/bfedd2c9-4113-434f-b3b2-a75d5948e4ca', // 1-挤牙膏的瞬间
+        'https://github.com/user-attachments/assets/961272e7-dd67-46f1-89ae-814f28f622a3', // 2-打盹的猫
+        'https://github.com/user-attachments/assets/ae80190c-1c77-41cf-90a8-2401f0998714', // 3-下午茶蛋糕
+        'https://github.com/user-attachments/assets/56b6fc50-e5c7-491c-8e3a-3ce33df7593f', // 4
+        'https://github.com/user-attachments/assets/2fc57749-33f6-4e3f-8e30-4c20610ced67', // 5
+        'https://github.com/user-attachments/assets/9fd8d005-4d7c-4185-b3a8-67abbba5eba2', // 6
+        'https://github.com/user-attachments/assets/acdeca21-d2d0-4abd-8c72-dc642cd021da', // 7
+        'https://github.com/user-attachments/assets/01e286ea-8053-4aac-abc5-d5406b10fa8f', // 8
+        'https://github.com/user-attachments/assets/2818f238-c58b-4c79-84f7-99902926a604', // 9
+        'https://github.com/user-attachments/assets/f4354bd5-118c-4c3c-a789-1ada5f8b6ae0', // 10
+        'https://github.com/user-attachments/assets/ada4e389-4d16-4e0f-bc5b-862fcd734741', // 11
+        'https://github.com/user-attachments/assets/8a3c1588-6b68-438a-92b0-1764a3dd2c7d', // 12
+        'https://github.com/user-attachments/assets/2d560955-a0d9-4eb6-833a-0447831d61ec', // 13
+        'https://github.com/user-attachments/assets/ad754eae-3599-4ab5-a685-fa36b49c148e', // 14
+        'https://github.com/user-attachments/assets/1199c9bf-582a-42df-93b4-dfec9100e454', // 15
+        'https://github.com/user-attachments/assets/2421a696-72ee-40ab-8529-cefa058ea192', // 16
+        'https://github.com/user-attachments/assets/dfa3e092-2eb9-4441-a92b-d7df8973ff30', // 17
+        'https://github.com/user-attachments/assets/78ef96bf-a3d6-4fc3-a573-52aedbafb8a5', // 18
+        'https://github.com/user-attachments/assets/9c8a4ce0-7ddb-427d-bcd5-e2e9afce1bc6', // 19
+        'https://github.com/user-attachments/assets/475124bd-4746-44f2-b780-e3e0eb4bfc45'  // 20
+    ];
+
+    function loadImages(callback) {
+        if (cardImageUrls.length === 0 || cardImageUrls.every(url => url === '')) {
+            callback();
+            return;
+        }
+
+        for (let i = 0; i < TOTAL_CARDS; i++) {
+            if (cardImageUrls[i]) {
+                const img = new Image();
+                // 移除跨域限制，否则 GitHub 图片会因为 CORS 严格审查而报错无法显示
+                img.onload = () => {
+                    imagesLoaded++;
+                    if (imagesLoaded === TOTAL_CARDS) callback();
+                };
+                img.onerror = () => {
+                    console.error(`Failed to load image for card ${i}`);
+                    imagesLoaded++; // 即便失败也算加载过，防止卡死
+                    if (imagesLoaded === TOTAL_CARDS) callback();
+                }
+                img.src = cardImageUrls[i];
+                cardImages[i] = img;
+            } else {
+                 imagesLoaded++;
+                 if (imagesLoaded === TOTAL_CARDS) callback();
+            }
+        }
+    }
+
+
+    class TarotCard {
+        constructor(id) {
+            this.id = id;
+            this.width = cw > 800 ? 160 : 120;
+            this.height = this.width * 1.6;
+            
+            this.x = cw / 2;
+            this.y = ch / 2;
+            this.rotation = 0;
+            
+            this.tx = cw / 2;
+            this.ty = ch / 2;
+            this.trotation = 0;
+            
+            this.angle = Math.random() * Math.PI * 2;
+            // 洗牌时散开半径更大
+            this.radius = Math.random() * 400 + 200; 
+            this.speed = (Math.random() - 0.5) * 0.04 + 0.015;
+
+            this.isFlipped = false;
+            this.flipProgress = 0;
+            this.targetFlipProgress = 0;
+            
+            this.alpha = 1;
+            this.scale = 1;
+            this.targetScale = 1;
+
+            this.backColor = cardBackColor;
+            this.frontColor = cardFrontColor;
+        }
+
+        update(state, handX, handY) {
+            this.flipProgress += (this.targetFlipProgress - this.flipProgress) * 0.1;
+            this.scale += (this.targetScale - this.scale) * 0.1;
+
+            if (state === STATES.INIT) {
+                this.tx = cw / 2;
+                this.ty = ch / 2;
+                this.trotation = 0;
+                this.targetScale = 1;
+            } else if (state === STATES.SHUFFLING) {
+                this.angle += this.speed;
+                let currentRadius = this.radius + Math.sin(Date.now() * 0.001 + this.id) * 80;
+                this.tx = handX + Math.cos(this.angle) * currentRadius;
+                this.ty = handY + Math.sin(this.angle) * currentRadius;
+                this.trotation = this.angle + Math.PI / 2;
+                this.targetScale = 1;
+            } else if (state === STATES.DRAWING) {
+                if (this.id === selectedCardIndex) {
+                    this.tx = cw / 2;
+                    this.ty = ch / 2 - 50;
+                    this.trotation = 0;
+                    this.targetScale = 1.3; // 抽到卡牌缓缓放大
+                } else {
+                    this.tx = this.x + (Math.random() - 0.5) * 20;
+                    this.ty = ch + this.height * 2;
+                    this.alpha = Math.max(0, this.alpha - 0.05);
+                }
+            } else if (state === STATES.FLIPPED) {
+                 if (this.id === selectedCardIndex) {
+                    this.ty = ch / 2 - 80;
+                    this.targetScale = 1.4; // 翻牌时保持放大
+                 }
+            }
+
+            this.x += (this.tx - this.x) * 0.08;
+            this.y += (this.ty - this.y) * 0.08;
+            
+            let diff = this.trotation - this.rotation;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            this.rotation += diff * 0.1;
+        }
+
+        draw(ctx) {
+            if (this.alpha <= 0) return;
+
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.rotation);
+            ctx.scale(this.scale, this.scale); // 应用整体放大缩放
+            ctx.globalAlpha = this.alpha;
+
+            const w = this.width;
+            const h = this.height;
+            const scaleX = Math.cos(this.flipProgress * Math.PI);
+            ctx.scale(scaleX, 1); // 3D翻转缩放
+
+            // 根据卡牌的缩放比例（浮空高度）动态调整阴影，增强抽牌时的悬浮立体感
+            let shadowAlpha = 0.15 + (this.scale - 1) * 0.4;
+            let shadowBlur = 12 + (this.scale - 1) * 30;
+            let shadowOffsetY = 6 + (this.scale - 1) * 20;
+
+            ctx.shadowColor = `rgba(0, 0, 0, ${shadowAlpha})`;
+            ctx.shadowBlur = shadowBlur;
+            ctx.shadowOffsetX = 4 * scaleX;
+            ctx.shadowOffsetY = shadowOffsetY;
+
+            ctx.beginPath();
+            ctx.roundRect(-w / 2, -h / 2, w, h, 10);
+            ctx.closePath();
+
+            if (scaleX > 0) {
+                // 背面 - 保持原样的浅粉色和圆圈设计
+                ctx.fillStyle = this.backColor;
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(0, 0, w * 0.3, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(0, 0, w * 0.2, 0, Math.PI * 2);
+                ctx.stroke();
+            } else {
+                // 正面 - 准备绘制真实图片
+                ctx.scale(-1, 1);
+                
+                if (cardImages[this.id] && cardImages[this.id].complete && cardImages[this.id].naturalWidth !== 0) {
+                    // 如果有真实的图片，使用 drawImage 且使用 clip 确保图片不会画到圆角外面
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.roundRect(-w / 2, -h / 2, w, h, 10);
+                    ctx.clip();
+                    ctx.drawImage(cardImages[this.id], -w / 2, -h / 2, w, h);
+                    ctx.restore();
+                } else {
+                    // 如果没有图片（或者图片还没加载完），使用占位图案
+                    const grad = ctx.createLinearGradient(-w/2, -h/2, w/2, h/2);
+                    grad.addColorStop(0, '#fafafa');
+                    grad.addColorStop(1, this.frontColor);
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.arc(0, -20, w * 0.25, 0, Math.PI * 2);
+                    ctx.fillStyle = '#fff';
+                    ctx.shadowColor = cardBackColor;
+                    ctx.shadowBlur = 15;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    // 牌号或加载提示
+                    ctx.fillStyle = textColorDark;
+                    ctx.textAlign = 'center';
+                    ctx.shadowColor = 'rgba(94, 112, 84, 0.3)';
+                    ctx.shadowOffsetX = 1;
+                    ctx.shadowOffsetY = 1;
+                    ctx.shadowBlur = 2;
+                    
+                    if (cardImageUrls[this.id] !== '') {
+                        ctx.font = '20px "ZCOOL KuaiLe"'; 
+                        ctx.fillText(`待读取图片`, 0, h/2 - 45);
+                    } else {
+                        // 如果连图片配置都没有，说明是占位牌
+                        ctx.font = '32px "ZCOOL KuaiLe"'; 
+                        ctx.fillText(`No.${this.id + 1}`, 0, h/2 - 20);
+                    }
+                    
+                    ctx.shadowColor = 'transparent';
+                }
+            }
+
+            ctx.restore();
+        }
+    }
+
+    class Particle {
+        constructor(x, y, type) {
+            this.x = x;
+            this.y = y;
+            this.type = type;
+            this.life = 1.0;
+            this.decay = Math.random() * 0.02 + 0.01;
+            
+            if (type === 'glow') {
+                this.vx = (Math.random() - 0.5) * 2;
+                this.vy = (Math.random() - 0.5) * 2;
+                this.size = Math.random() * 15 + 5;
+                this.color = 'rgba(255, 249, 196, 0.5)'; // 嫩黄
+            } else {
+                let angle = Math.random() * Math.PI * 2;
+                let speed = Math.random() * 5 + 2;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed - 2;
+                this.size = Math.random() * 10 + 5;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.vRotation = (Math.random() - 0.5) * 0.2;
+            }
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            if (this.type !== 'glow') {
+                this.vy += 0.05;
+                this.rotation += this.vRotation;
+            }
+            this.life -= this.decay;
+        }
+
+        draw(ctx) {
+            if (this.life <= 0) return;
+            
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.globalAlpha = this.life;
+
+            if (this.type === 'glow') {
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 10;
+                ctx.fill();
+            } else if (this.type === 'leaf') {
+                ctx.rotate(this.rotation);
+                ctx.fillStyle = '#81c784'; // 清新春日嫩绿
+                ctx.beginPath();
+                ctx.ellipse(0, 0, this.size, this.size/2, 0, 0, Math.PI*2);
+                ctx.fill();
+            } else if (this.type === 'flower') {
+                ctx.rotate(this.rotation);
+                // 花瓣颜色改为暖粉色桃花
+                ctx.fillStyle = '#ffb7c5'; 
+                for(let i=0; i<5; i++) {
+                    ctx.rotate((Math.PI * 2) / 5);
+                    ctx.beginPath();
+                    ctx.ellipse(this.size/2, 0, this.size/2, this.size/3, 0, 0, Math.PI*2);
+                    ctx.fill();
+                }
+                // 花蕊颜色改为柔和的嫩黄
+                ctx.fillStyle = '#fff59d'; 
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size/3, 0, Math.PI*2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+    }
+
+    const cards = [];
+    for (let i = 0; i < TOTAL_CARDS; i++) {
+        cards.push(new TarotCard(i));
+    }
+    let particles = [];
+    let handTrail = [];
+
+    // 定义卡牌文案数据 (完整录入 20 张卡牌)
+    const rawCardData = [
+        {
+            section: "板块一：【日常的拥抱】 (关注自我、居家与感官安抚)",
+            title: "1-挤牙膏的瞬间",
+            short: "微小的仪式，是找回生活掌控感的开始。",
+            paragraphs: [
+                "我们每天都在重复许多微小的习惯，往往忽略了它们的存在。然而，正是这些寻常的瞬间，构成了生活安定的基石。",
+                "在清晨柔和的光线中，“挤牙膏的瞬间”被定格下来。一点点清凉的薄荷膏体稳稳地落在柔软的刷毛上，伴随着细微的水流声，开启了新的一天。这是一个极具仪式感的动作，让身体在刚醒的混沌中找回最初的掌控感。",
+                "如果解读中出现了“挤牙膏的瞬间”，则提示你现在需要将视线收回当下，重拾生活的微小秩序。与其焦虑遥远的未来，不如从眼下最基础的日常起步。去认真感受一次洗漱，或者整理一下桌面。主动用这些确定的微小行动，为自己注入安定的力量。"
+            ]
+        },
+        {
+            section: "板块一：【日常的拥抱】 (关注自我、居家与感官安抚)",
+            title: "2-打盹的猫",
+            short: "你永远拥有随时休息的权利。",
+            paragraphs: [
+                "要想更好地面对生活中的风浪，适当的柔软与卸下防备是必不可少的。在一片散发着淡淡暖意的空间里，“打盹的猫”正安静地蜷缩着。",
+                "阳光像水彩般晕染在地毯上，毛茸茸的身体伴随着微弱的呼吸轻轻起伏。它懂得在任何时刻找到最舒服的姿态，展现出一种全然放松和无条件接纳的生命智慧。",
+                "如果解读中出现了“打盹的猫”，则提示你是时候放下心中的警惕，让自己彻底松弛下来了。紧绷了太久的你，是否忘了你也有随时休息的权利？去寻找一个让你感到安全的角落，闭上眼睛，允许自己毫无负罪感地度过一段“什么都不做”的时光。"
+            ]
+        },
+        {
+            section: "板块一：【日常的拥抱】 (关注自我、居家与感官安抚)",
+            title: "3-下午茶蛋糕",
+            short: "生活需要一点甜，你值得被自己温柔偏爱。",
+            paragraphs: [
+                "生活难免会经历苦涩与疲惫，而懂得在恰当的时机自我犒赏，是一种温柔的智慧。画面中，盘子里被切开的蛋糕，绵密的奶油与香甜的草莓果肉仿佛散发着诱人的香气，那是一份在平淡日子里主动为自己分配的甜蜜。这不仅是味蕾的满足，更是对内心默默努力的认可。",
+                "如果解读中出现了“切块蛋糕”，那么请好好审视一下自己最近的状态。你有多久没有好好拥抱那个疲惫的自己了？去为自己买一份期待已久的甜点，或是送自己一份小礼物吧。允许自己享受这份甜蜜，因为你本身就值得被世界偏爱。"
+            ]
+        },
+        {
+            section: "板块一：【日常的拥抱】 (关注自我、居家与感官安抚)",
+            title: "4-青柠饮品",
+            short: "接纳酸涩的际遇，在清醒中重启向前的活力。",
+            paragraphs: [
+                "酸涩与清新的交织，往往能带来最直接的清醒与活力。一只透明的玻璃杯里装着“青柠饮品”，杯壁上凝结着冰凉的水珠。",
+                "切开的青柠沉浮在细密的气泡之间，仿佛能听到冰块碰撞的清脆声响。生活中的小挫折就像这青柠的酸涩，但只要加以调和，就能化作洗涤疲惫的清凉。",
+                "如果解读中出现了“青柠饮品”，则提示你面对生活中的“酸涩”时，需要转换一种心态。当你感到头脑昏沉或情绪陷入死胡同，不妨去喝一杯喜欢的茶饮，让感官的刺激帮你重启当下的状态。接纳百般滋味，你将在清醒中重新获得向前的动力。"
+            ]
+        },
+        {
+            section: "板块一：【日常的拥抱】 (关注自我、居家与感官安抚)",
+            title: "5-唱片机",
+            short: "屏蔽外界的喧嚣，只听见内心的专属旋律。",
+            paragraphs: [
+                "在讲究快速的时代，保持专注与耐心的倾听变得尤为珍贵。",
+                "黑色的胶片在“唱片机”上缓缓匀速旋转，唱针轻轻落下，带着轻微颗粒感的音乐仿佛如流水般流淌而出。它保留了一种沉浸式的陪伴，为心灵划出了一片不受打扰的安全区。",
+                "如果解读中出现了“唱片机”，则提示你暂时屏蔽周围嘈杂的声音，去倾听自己内心的旋律。周围的声音那么多，你是否忽略了自己真实的渴求？挑一首你最喜欢的纯音乐，戴上耳机，在音乐播放的几分钟里尽情放空。主动为自己播放一首心灵的背景音，以此抵御外界的喧嚣。"
+            ]
+        },
+        {
+            section: "板块二：【微观的奇迹】 (自然哲理、生命韧性与关系)",
+            title: "6-墙缝里的狗尾巴草",
+            short: "困境不是结局，向阳生长的力量就在你体内。",
+            paragraphs: [
+                "生命的力量并不只眷顾肥沃的土壤。即使在逼仄的环境中，只要有一丝缝隙，生命也能找到向阳生长的出口。",
+                "在水泥墙缝中，一簇细细的“狗尾巴草”倔强地探出身子。它那毛茸茸的草穗在微风中轻轻摇曳，展现出顺应环境与不屈服的奇妙平衡。",
+                "当解读中出现“墙缝里的狗尾巴草”时，则在提示你，你比自己想象的更加坚韧。现在的你，是否正处在某种受限的境遇中？即使眼前的空间狭窄，你也拥有破土而出的能量。试着在限制中寻找那一丝光亮，主动去创造属于你的出口。"
+            ]
+        },
+        {
+            section: "板块二：【微观的奇迹】 (自然哲理、生命韧性与关系)",
+            title: "7-三叶草",
+            short: "不必苦寻奇迹，平凡的日常本身就是温柔的馈赠。",
+            paragraphs: [
+                "我们总是在急切地低头寻找罕见的奇迹，却往往忽略了平凡本身就是大地温柔的馈赠。",
+                "平凡的“三叶草”静静舒展着心形的叶片。它们簇拥在一起，不张扬，却有着属于自己的清丽与从容。它们象征着生活中随处可见的微小幸运与希望。",
+                "如果解读中出现了“三叶草”，则提示你需要将目光从遥远的远方收回，关注身边的日常。你是不是因为一直盯着远方的那个“例外”，而忽略了身边一直陪伴你的美好？今天试着记录下三件发生在身边的好事。放下对奇迹的执念，你会发现自己早已被幸福包围。"
+            ]
+        },
+        {
+            section: "板块二：【微观的奇迹】 (自然哲理、生命韧性与关系)",
+            title: "8-蜘蛛网上沾的花瓣",
+            short: "拥抱美丽的意外，接纳生命里不期而遇的羁绊。",
+            paragraphs: [
+                "生命中的羁绊往往充满了意想不到的偶然，脆弱与坚韧总能在不经意间达成奇妙的平衡。",
+                "纤细的银色蛛网上挂着一片“蜘蛛网上沾的花瓣”。看似充满束缚意味的网，却温柔地接住并悬停了这片柔软的粉色。这是一种美丽的意外，教导我们接纳生命中脆弱又偶然的相遇。",
+                "如果解读中出现了“蜘蛛网上沾的花瓣”，那么请思考一下，面对生活中不在计划内的“意外”，你是抗拒还是接纳？如果今天遇到了一点小插曲，试着深呼吸，用好奇的眼光去看看它是否带来了别样的风景。接纳无常，也许它正温柔地托举着你。"
+            ]
+        },
+        {
+            section: "板块二：【微观的奇迹】 (自然哲理、生命韧性与关系)",
+            title: "9-秋天的落叶",
+            short: "优雅地松手，腾出空间才能迎接新的生机。",
+            paragraphs: [
+                "懂得优雅地告别，是生命长河中必须学习的课题。金黄与低饱和度焦糖色交织的“秋天的落叶”，打着旋儿从枝头缓缓飘落。",
+                "这不是枯萎的悲歌，而是季节更迭的自然韵律。它教会我们理解周期，理解有些事物的离开是为了卸下重负，为下一次的抽芽积蓄能量。",
+                "如果解读中出现了“秋天的落叶”，则提示你到了该放手的时候了。在你的心里，是否有一些紧抓不放的过去？试着清理掉一件不再使用的旧物，或者在心里对一段往事说句感谢，然后转身。当你主动腾出空间，新的生机才会自然降临。"
+            ]
+        },
+        {
+            section: "板块二：【微观的奇迹】 (自然哲理、生命韧性与关系)",
+            title: "10-抬头看向天空树冠避羞的画面",
+            short: "保持温柔的边界，在关系中留出自在呼吸的缝隙。",
+            paragraphs: [
+                "最好的关系，不是无缝衔接，而是相互尊重、留有余地。抬头看向天空“树冠避羞”的画面映入眼帘。",
+                "茂密的树冠在空中彼此靠近，却又巧妙地留下一道道如同河流般的缝隙。它们懂得为彼此留出呼吸的间隙，保持着独立而不疏离的边界感。",
+                "当解读中出现“抬头看向天空树冠避羞的画面”时，则在提示你审视自己的人际关系。你是否常因为靠得太近而感到消耗？今天试着给自己留出一段纯粹的独处时间，温柔地守护自己的能量场。保持边界并不是冷漠，而是为了更好地保护彼此的枝叶。当你能在关系中自在地呼吸，阳光自然会照亮你们之间的缝隙。"
+            ]
+        },
+        {
+            section: "板块三：【放空的间隙】 (空间转换、抽离与静观)",
+            title: "11-公园长椅",
+            short: "心安理得地停顿，无所事事也是一种自我治愈。",
+            paragraphs: [
+                "我们需要一种“无所事事”的合法性，从繁杂的社会角色中暂时退出。",
+                "斑驳的树影在木质的椅背上晃动，“公园长椅”静静地立在那里，散发着安定的气息。它不要求你生产任何价值，只是提供一个支点，等待一个需要休息的旅人停下脚步。",
+                "如果解读中出现了“公园长椅”，则提示你现在的身心已经超载，需要立刻安排一次停顿。像陀螺一样旋转的你，是否觉得休息是一件充满负罪感的事？找个时间去公园的长椅上坐坐，不用看手机，只是发呆。请心安理得地享受停顿，因为驻足时的微风，同样是生命的意义所在。"
+            ]
+        },
+        {
+            section: "板块三：【放空的间隙】 (空间转换、抽离与静观)",
+            title: "12-公园湖边",
+            short: "允许情绪荡漾，平静的湖水能包容所有的波澜。",
+            paragraphs: [
+                "水是最包容的容器，它能倒映天空的喜怒哀乐，却总能在风停后迅速恢复平静。",
+                "“公园湖边”微风轻拂，水彩般柔和的波光在水面上荡漾。它是情绪的蓄水池，也是内心澄澈的映射。",
+                "如果解读中出现了“公园湖边”，那么请好好审视一下自己内心的状态。此刻你的内心是正刮着风暴，还是像湖水般平静？如果你感到烦躁，试着闭上眼睛，将纠结的念头当作小石子丢进湖里，看着涟漪一点点散去。主动梳理情绪，让内心重新回归如水般的深邃与包容。"
+            ]
+        },
+        {
+            section: "板块三：【放空的间隙】 (空间转换、抽离与静观)",
+            title: "13-路灯",
+            short: "不必畏惧黑夜，总有一束微光会为你指明方向。",
+            paragraphs: [
+                "在漫长而暗淡的时刻，一丝微光便足以安定人心。路灯站在街角，泛着暖黄色的光晕。",
+                "光影微微晃动，但灯柱纹丝不动。它无法照亮整条路，但它能在黑暗中为你指明脚下的路，象征着孤独时那一抹不变的温暖与指引。",
+                "如果解读中出现了“路灯”，则提示你在迷茫中不要失去希望。在你看不清远方的时候，谁是你心里那盏默默亮起的灯？今晚回家路上，抬头看看沿途的光亮。在心里感激那些曾给过你帮助的人，也抱抱那个勇敢走过黑夜的自己。只要心中有光，你最终会发现自己就是照亮前路的那盏明灯。"
+            ]
+        },
+        {
+            section: "板块三：【放空的间隙】 (空间转换、抽离与静观)",
+            title: "14-高铁窗外",
+            short: "允许自己正在路上，享受不急于抵达的过渡时光。",
+            paragraphs: [
+                "人生允许有过渡的时刻，允许事物后退，允许自己正处于尚未到达的途中。",
+                "伴随着轻微的轰鸣，模糊的残影在“高铁窗外”以极快的速度向后退去，而车厢内却安稳如初。处于这种奇妙的过渡状态中，你可以毫无负担地享受沿途的风景，而不必焦虑于立刻抵达终点。",
+                "如果解读中出现了“高铁窗外”，则提示你需要缓解对目标的执念与焦虑。面对悬而未决的事情，你是否感到不安？试着看向窗外，告诉自己正在经历一段专属的过程。接纳此时此刻的“在途中”，时间自然会把你带向该去的地方。"
+            ]
+        },
+        {
+            section: "板块三：【放空的间隙】 (空间转换、抽离与静观)",
+            title: "15-转动的摩天轮",
+            short: "拉远视线，沉重的烦恼终会化作微不足道的风景。",
+            paragraphs: [
+                "当我们深陷烦恼时，视角的转换往往能带来豁然开朗的释怀。",
+                "伴随着彩色的座舱缓缓上升，“转动的摩天轮”带你远离地面的喧嚣。脚下的城市渐渐变小，低谷时它带你酝酿期待，高点时它让你俯瞰平时的困扰，代表着周而复始的圆满。",
+                "如果解读中出现了“转动的摩天轮”，则提示你现在需要从当下的困境中抽离出来。你是否正觉得眼前的问题像大山般难以逾越？在脑海中想象自己正坐在摩天轮的顶端，用宏观的视角审视现在，问问自己一年后这还重要吗？拉远视线，那些沉重的烦恼终会化为微不足道的风景。"
+            ]
+        },
+        {
+            section: "板块四：【时间的礼物】 (捕捉瞬间、天气流转与宏大连接)",
+            title: "16-清晨阳光透过窗帘",
+            short: "光总有缝隙可循，每一个清晨都是重新出发的契机。",
+            paragraphs: [
+                "无论昨夜经历过怎样的暗潮汹涌，光永远有缝隙可循。“清晨阳光透过窗帘”斜斜地打在地上。",
+                "空气中细小的尘埃在光柱里轻盈飞舞，一切都安静而充满隐约的生机。这是时间赐予的重启键，意味着新的一天终究会如约而至。",
+                "如果解读中出现了“清晨阳光透过窗帘”，则提示你需要以开放的心态迎接新的开始。早上睁开眼时，你心里装的是疲惫还是期待？明早醒来先拉开窗帘，让阳光洒在脸上，闭目感受几秒钟的温暖。主动去接纳这份光亮，就是接纳了自己重新出发的勇气。"
+            ]
+        },
+        {
+            section: "板块四：【时间的礼物】 (捕捉瞬间、天气流转与宏大连接)",
+            title: "17-窗外的春色",
+            short: "熬过漫长的蛰伏，你的内在正酝酿着不可思议的绽放。",
+            paragraphs: [
+                "所有的生机与绽放，都曾经历过漫长寒冬的蛰伏与隐忍。看向窗户，“窗外的春色”伴随着略带凉意的微风扑面而来。",
+                "枝头爆出嫩绿的新芽，展现出大自然强大的复苏力量。春天不是一夜降临的，它是耐心等待与暗自生长的结果。",
+                "如果解读中出现了“窗外的春色”，则提示你经历的低谷即将迎来转机。在经历了人生的某些“寒冬”之后，你准备好迎接属于你的新绿了吗？它提醒你冬天总会过去。带着希望去等待和创造，你的内在正酝酿着不可思议的春天。"
+            ]
+        },
+        {
+            section: "板块四：【时间的礼物】 (捕捉瞬间、天气流转与宏大连接)",
+            title: "18-夏天的一口西瓜",
+            short: "无需追问意义，纯粹地享受当下这一刻的甘甜。",
+            paragraphs: [
+                "快乐有时候可以非常纯粹、热烈且无需复杂的理由。",
+                "西瓜最中间的一块果肉被勺子挖出，鲜红的果肉滴着甘甜的汁水，一口咬下，清甜瞬间抚平了所有的燥热。这是一种即时的喜悦，只需要你在当下全心全意地去感受和享受。",
+                "如果解读中出现了“夏天的一口西瓜”，则提示你不要把快乐想得太复杂。成年后的你，有多久没有体验过这种毫无顾忌的开心了？在这个当下，去吃一份喜欢的水果，专注感受那份甜美在口中炸开的喜悦。不再追问宏大的意义，纯粹地享受当下，你便掌握了疗愈的密码。"
+            ]
+        },
+        {
+            section: "板块四：【时间的礼物】 (捕捉瞬间、天气流转与宏大连接)",
+            title: "19-下雨天雨滴产生的水波纹",
+            short: "顺应情绪的流淌，看涟漪散开，内心自会归于宽广。",
+            paragraphs: [
+                "情绪的流动与消解，有着它自己温柔的节奏。绵绵细雨落下，“下雨天雨滴产生的水波纹”在积水上荡漾开来。",
+                "一圈圈完美的同心圆慢慢向外扩散、交织，最终再次归于无形。雨滴的下落是自然的宣泄，而水波纹的消散则是通往平静的必经之路。",
+                "如果解读中出现了“下雨天雨滴产生的水波纹”，则提示你不要刻意压抑自己的负面情绪。当情绪像雨点袭来，你是筑起高墙还是允许它们泛起波澜？找个安静的地方看一会儿雨，告诉自己情绪来了就让它荡漾一会儿。顺应内心的流淌，你会在这份觉察中变得更加宽广。"
+            ]
+        },
+        {
+            section: "板块四：【时间的礼物】 (捕捉瞬间、天气流转与宏大连接)",
+            title: "20-抬头仰望傍晚天空云朵画面",
+            short: "把重担分给天空，在宏大的连接里找回轻盈与自由。",
+            paragraphs: [
+                "天空是世界上最宏大也最包容的画布，它承接我们所有的心事。夕阳西下，低饱和度的橘粉色染透天际，“抬头仰望傍晚天空云朵画面”如同柔软的画卷。",
+                "云朵在微风中缓慢游移、变换形状，承载着无常，却从未失去高远与辽阔。",
+                "如果解读中出现了“抬头仰望傍晚天空云朵画面”，则提示你需要将有限的自我与宏大的自然建立连接。低头赶路太久的你，想过把心事分一点给天空吗？走到户外，抬头看看云朵的形状，做三次深呼吸。将重担轻轻卸下，体会这种宏大的连接，再沉重的心绪也会变得轻盈。"
+            ]
+        }
+    ];
+
+    const placeholderCardsData = rawCardData.map((data, i) => {
+        return {
+            id: i,
+            shortText: data.short,
+            fullText: `
+                <div class="flex flex-col items-center">
+                    <div class="text-sm text-[#8fa385] mb-2 font-bold tracking-widest">${data.section}</div>
+                    <h3 class="text-3xl mb-4 text-[#ff9eaa] border-b-2 border-[#ffb7c5] pb-2 px-8">${data.title}</h3>
+                    <div class="text-left space-y-4 text-xl w-full">
+                        ${data.paragraphs.map(p => `<p>　　${p}</p>`).join('')}
+                    </div>
+                </div>
+            `
+        };
+    });
+
+    let selectedCardIndex = -1;
+
+    function changeState(newState) {
+        currentState = newState;
+
+        if (newState === STATES.INIT) {
+            instructionEl.innerHTML = useMouseFallback ? "点击左键：洗牌" : "张开手掌，让能量流转，开始洗牌";
+            textLayer.style.opacity = 0;
+            shortDescEl.style.transform = 'translateY(220px)';
+            shortDescEl.style.opacity = 0;
+            fullDescEl.style.opacity = 0;
+            fullDescEl.style.transform = 'scale(0.95)';
+            
+            cards.forEach(c => {
+                c.isFlipped = false;
+                c.targetFlipProgress = 0;
+                c.alpha = 1;
+            });
+            selectedCardIndex = -1;
+            
+        } else if (newState === STATES.SHUFFLING) {
+            instructionEl.innerHTML = useMouseFallback ? "移动鼠标洗牌。点击左键：抽牌" : "移动发光能量球进行洗牌。<br>伸出食指(单指)抽出命运之牌。";
+            textLayer.style.opacity = 0;
+            
+        } else if (newState === STATES.DRAWING) {
+            instructionEl.innerHTML = useMouseFallback ? "选中了一张牌。点击左键：翻牌" : "选中了一张牌。<br>比出“剪刀手”(手势2)揭晓它。";
+            selectedCardIndex = Math.floor(Math.random() * TOTAL_CARDS);
+            
+        } else if (newState === STATES.FLIPPED) {
+            // 去掉了防误触的提示语，保持界面清爽
+            instructionEl.innerHTML = useMouseFallback ? "点击左键：阅读心灵指引" : "张开嘴巴，用气息将画面化作花瓣。";
+            fistLockoutTime = Date.now() + 10000; // 翻牌后锁定握拳10秒
+            
+            if (selectedCardIndex === -1) return;
+            const cardData = placeholderCardsData[selectedCardIndex];
+            
+            textLayer.style.opacity = 1;
+            
+            // 增加排版层级：第几张牌 -> 心灵宣言 -> 短句，并调整文字颜色为浅色治愈系绿
+            shortDescEl.innerHTML = `
+                <div class="text-xl text-[#8fa385] mb-1 font-bold tracking-widest">✦ 第 ${selectedCardIndex + 1} 张牌 ✦</div>
+                <div class="text-lg text-[#9eb392] mb-3 tracking-widest">心灵宣言</div>
+                <div class="text-[2rem] text-[#789664] leading-relaxed px-6 drop-shadow-sm">${cardData.shortText}</div>
+            `;
+            shortDescEl.style.opacity = 1;
+            shortDescEl.style.transform = 'translateY(0)'; 
+            
+            cards[selectedCardIndex].targetFlipProgress = 1;
+
+        } else if (newState === STATES.DISSOLVING) {
+            // 去掉了防误触的提示语，保持界面清爽
+            instructionEl.innerHTML = useMouseFallback ? "阅读完毕。点击左键：重新开始" : "阅读完毕后，握拳将能量收回重置。";
+            
+            shortDescEl.style.opacity = 0;
+            shortDescEl.style.transform = 'translateY(20px)';
+            
+            if (selectedCardIndex === -1) return;
+            
+            const card = cards[selectedCardIndex];
+            for(let i=0; i<100; i++) {
+                let type = Math.random() > 0.5 ? 'leaf' : 'flower';
+                let px = card.x + (Math.random() - 0.5) * card.width;
+                let py = card.y + (Math.random() - 0.5) * card.height;
+                particles.push(new Particle(px, py, type));
+            }
+            
+            card.alpha = 0;
+
+            setTimeout(() => {
+                if (currentState === STATES.DISSOLVING) {
+                    changeState(STATES.READING);
+                }
+            }, 1500);
+
+        } else if (newState === STATES.READING) {
+            fistLockoutTime = Date.now() + 10000; // 进入长文阅读后再次锁定握拳10秒
+            if (selectedCardIndex === -1) return;
+            
+            const cardData = placeholderCardsData[selectedCardIndex];
+            fullDescEl.innerHTML = cardData.fullText;
+            fullDescEl.style.opacity = 1;
+            fullDescEl.style.transform = 'scale(1)';
+        }
+    }
+
+    function animate() {
+        const bgGrad = ctx.createLinearGradient(0, 0, cw, ch);
+        bgGrad.addColorStop(0, getCssVar('--bg-gradient-start') || '#f1fbe6');
+        bgGrad.addColorStop(0.5, getCssVar('--bg-gradient-mid') || '#d8eecd');
+        bgGrad.addColorStop(1, getCssVar('--bg-gradient-end') || '#b6dab2');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, cw, ch);
+
+        handPos.x += (targetHandPos.x - handPos.x) * 0.2;
+        handPos.y += (targetHandPos.y - handPos.y) * 0.2;
+
+        handTrail.push({x: handPos.x, y: handPos.y});
+        if (handTrail.length > 20) handTrail.shift();
+
+        if ((currentGesture !== 'NONE' || useMouseFallback) && (currentState === STATES.INIT || currentState === STATES.SHUFFLING || currentState === STATES.DRAWING)) {
+            particles.push(new Particle(handPos.x, handPos.y, 'glow'));
+
+            ctx.beginPath();
+            if(handTrail.length > 0) {
+                 ctx.moveTo(handTrail[0].x, handTrail[0].y);
+                 for(let i=1; i<handTrail.length; i++) {
+                     let xc = (handTrail[i].x + handTrail[i-1].x) / 2;
+                     let yc = (handTrail[i].y + handTrail[i-1].y) / 2;
+                     ctx.quadraticCurveTo(handTrail[i-1].x, handTrail[i-1].y, xc, yc);
+                 }
+            }
+            ctx.strokeStyle = 'rgba(255, 249, 196, 0.5)';
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(handPos.x, handPos.y, 25, 0, Math.PI * 2);
+            ctx.fillStyle = '#fffde7'; // 核心色
+            ctx.shadowColor = 'rgba(255, 249, 196, 0.8)';
+            ctx.shadowBlur = 30;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        cards.forEach(card => {
+            if (card.id !== selectedCardIndex) {
+                card.update(currentState, handPos.x, handPos.y);
+                card.draw(ctx);
+            }
+        });
+        if (selectedCardIndex !== -1) {
+             const sc = cards[selectedCardIndex];
+             sc.update(currentState, handPos.x, handPos.y);
+             sc.draw(ctx);
+        }
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.update();
+            p.draw(ctx);
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    function calculateDistance(p1, p2) {
+        return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+    }
+
+    function detectGesture(landmarks) {
+        if (!landmarks) return 'NONE';
+        const wrist = landmarks[0];
+        const thumbTip = landmarks[4];
+        const indexTip = landmarks[8];
+        const middleTip = landmarks[12];
+        const ringTip = landmarks[16];
+        const pinkyTip = landmarks[20];
+        const middleMcp = landmarks[9];
+        
+        const palmSize = calculateDistance(wrist, middleMcp);
+        const isIndexOpen = calculateDistance(wrist, indexTip) > palmSize * 1.5;
+        const isMiddleOpen = calculateDistance(wrist, middleTip) > palmSize * 1.5;
+        const isRingOpen = calculateDistance(wrist, ringTip) > palmSize * 1.5;
+        const isPinkyOpen = calculateDistance(wrist, pinkyTip) > palmSize * 1.5;
+
+        if (!isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) return 'FIST';
+        if (isIndexOpen && !isMiddleOpen && !isRingOpen && !isPinkyOpen) return 'POINT';
+        if (isIndexOpen && isMiddleOpen && isRingOpen && isPinkyOpen) return 'OPEN';
+        if (isIndexOpen && isMiddleOpen && !isRingOpen && !isPinkyOpen) return 'TWO_FINGERS';
+        return 'UNKNOWN';
+    }
+
+    function processHandResults(results) {
+        if (useMouseFallback) return;
+
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            const landmarks = results.multiHandLandmarks[0];
+            targetHandPos.x = (1 - landmarks[9].x) * cw;
+            targetHandPos.y = landmarks[9].y * ch;
+
+            let gesture = detectGesture(landmarks);
+            currentGesture = gesture;
+
+            if (gesture === 'FIST') {
+                // 如果当前时间已经超过了防误触锁定时间，才允许握拳重置
+                if (currentState !== STATES.INIT && Date.now() > fistLockoutTime) {
+                    changeState(STATES.INIT);
+                }
+            } else if (gesture === 'OPEN') {
+                if (currentState === STATES.INIT) changeState(STATES.SHUFFLING);
+            } else if (gesture === 'POINT') {
+                if (currentState === STATES.SHUFFLING) changeState(STATES.DRAWING);
+            } else if (gesture === 'TWO_FINGERS') {
+                if (currentState === STATES.DRAWING) changeState(STATES.FLIPPED);
+            }
+        } else {
+            currentGesture = 'NONE';
+        }
+    }
+
+    function processFaceResults(results) {
+        if (useMouseFallback) return;
+
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+             const landmarks = results.multiFaceLandmarks[0];
+             const upperLip = landmarks[13];
+             const lowerLip = landmarks[14];
+             const mouthDist = Math.abs(upperLip.y - lowerLip.y);
+             
+             mouthOpen = mouthDist > 0.05; 
+             if (mouthOpen && currentState === STATES.FLIPPED) {
+                 changeState(STATES.DISSOLVING);
+             }
+        }
+    }
+
+    function enableMouseFallback() {
+        useMouseFallback = true;
+        document.getElementById('video-container').style.display = 'none';
+        
+        canvas.addEventListener('mousemove', (e) => {
+            targetHandPos.x = e.clientX;
+            targetHandPos.y = e.clientY;
+        });
+
+        canvas.addEventListener('mousedown', () => {
+            fallbackGestureIndex = (fallbackGestureIndex + 1) % fallbackGestures.length;
+            let gesture = fallbackGestures[fallbackGestureIndex];
+            
+            if (gesture === 'FIST') {
+                if (currentState !== STATES.INIT) changeState(STATES.INIT);
+            } else if (gesture === 'OPEN') {
+                if (currentState === STATES.INIT) changeState(STATES.SHUFFLING);
+            } else if (gesture === 'POINT') {
+                if (currentState === STATES.SHUFFLING) changeState(STATES.DRAWING);
+            } else if (gesture === 'TWO_FINGERS') {
+                if (currentState === STATES.DRAWING) changeState(STATES.FLIPPED);
+            } else if (gesture === 'MOUTH_OPEN') {
+                if (currentState === STATES.FLIPPED) changeState(STATES.DISSOLVING);
+            }
+        });
+    }
+
+    async function initMediaPipe() {
+        try {
+            const hands = new Hands({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`});
+            hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+            hands.onResults(processHandResults);
+
+            const faceMesh = new FaceMesh({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`});
+            faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+            faceMesh.onResults(processFaceResults);
+
+            const camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({image: videoElement});
+                    await faceMesh.send({image: videoElement});
+                },
+                width: 640,
+                height: 480
+            });
+            
+            await camera.start();
+            
+            loadingScreen.style.display = 'none';
+            animate();
+            
+        } catch (error) {
+            console.warn("摄像头启动失败，已降级为鼠标模式:", error);
+            enableMouseFallback();
+            loadingScreen.style.display = 'none';
+            changeState(STATES.INIT);
+            animate();
+        }
+    }
+
+    window.onload = () => {
+        // 等待图像预加载完成后，再进行系统初始化
+        loadImages(() => {
+             initMediaPipe();
+        });
+    };
+</script>
+</body>
+</html>
