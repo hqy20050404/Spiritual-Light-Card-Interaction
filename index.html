@@ -827,7 +827,8 @@
             
        } else if (newState === STATES.FLIPPED) {
             // 去掉了防误触的提示语，保持界面清爽
-            instructionEl.innerHTML = useMouseFallback ? "点击左键：阅读心灵指引" : "张开嘴巴，用气息将画面化作花瓣。";
+        // 【修改点1】：给下方的交互提示加上 margin-top: 60px，把它往下踹！
+            instructionEl.innerHTML = useMouseFallback ? "点击左键：阅读心灵指引" : "<div style='margin-top: 60px;'>张开嘴巴，用气息将画面化作花瓣。</div>";
             fistLockoutTime = Date.now() + 10000; // 翻牌后锁定握拳10秒
             
             if (selectedCardIndex === -1) return;
@@ -835,14 +836,18 @@
             
             textLayer.style.opacity = 1;
             
-            // 增加排版层级：第几张牌 -> 心灵宣言 -> 短句，并调整文字颜色为浅色治愈系绿
+            // 【修改点2】：换成 ✧空心星 暗号，用最底层的 style 强制把字缩小！
             shortDescEl.innerHTML = `
-                <div class="text-xl text-[#8fa385] mb-1 font-bold tracking-widest">✦ 第 ${selectedCardIndex + 1} 张牌 ✦</div>
-                <div class="text-lg text-[#9eb392] mb-3 tracking-widest">心灵宣言</div>
-                <div class="text-2xl md:text-[2rem] text-[#789664] leading-relaxed px-6 pb-12 md:pb-0 drop-shadow-sm">${cardData.shortText}</div>
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; padding: 0 15px;">
+                    <div style="font-size: 14px; color: #8fa385; margin-bottom: 6px; font-weight: bold; letter-spacing: 2px;">✧ 第 ${selectedCardIndex + 1} 张牌 ✧</div>
+                    <div style="font-size: 12px; color: #9eb392; margin-bottom: 10px; letter-spacing: 2px;">心灵宣言</div>
+                    <div style="font-size: 18px; color: #789664; line-height: 1.6; text-align: center; font-weight: 500;">${cardData.shortText}</div>
+                </div>
             `;
             shortDescEl.style.opacity = 1;
-            shortDescEl.style.transform = 'translateY(0)'; 
+            
+            // 【修改点3】：发现是手机时，把这堆字强行往上抬高 30 像素！
+            shortDescEl.style.transform = window.innerWidth < 768 ? 'translateY(-30px)' : 'translateY(0)';
             
             cards[selectedCardIndex].targetFlipProgress = 1;
 
