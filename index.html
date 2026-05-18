@@ -781,16 +781,16 @@
         }
     ];
 
-    const placeholderCardsData = rawCardData.map((data, i) => {
+ const placeholderCardsData = rawCardData.map((data, i) => {
         return {
             id: i,
             shortText: data.short,
             fullText: `
-                <div class="flex flex-col items-center">
-                    <div class="text-sm text-[#8fa385] mb-2 font-bold tracking-widest">${data.section}</div>
-                    <h3 class="text-3xl mb-4 text-[#ff9eaa] border-b-2 border-[#ffb7c5] pb-2 px-8">${data.title}</h3>
-                    <div class="text-left space-y-4 text-xl w-full">
-                        ${data.paragraphs.map(p => `<p>　　${p}</p>`).join('')}
+                <div class="flex flex-col items-center px-6 py-4 max-h-[75vh] overflow-y-auto">
+                    <div class="text-xs md:text-sm text-[#8fa385] mb-3 font-bold tracking-widest text-center">${data.section}</div>
+                    <h3 class="text-xl md:text-3xl mb-5 text-[#ff9eaa] border-b-2 border-[#ffb7c5] pb-2 px-6 text-center font-medium">${data.title}</h3>
+                    <div class="text-left space-y-4 text-base md:text-xl w-full leading-loose md:leading-loose text-[#6b7c61]">
+                        ${data.paragraphs.map(p => `<p class="mb-2">　　${p}</p>`).join('')}
                     </div>
                 </div>
             `
